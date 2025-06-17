@@ -4,7 +4,7 @@ import router from './router'
 import '@fortawesome/fontawesome-free/css/all.min.css'
 import { createPinia } from 'pinia'
 import { useUserStore } from '@/stores/user'
-import { useRouter } from 'vue-router'
+
 
 const app = createApp(App)
 const pinia = createPinia()
