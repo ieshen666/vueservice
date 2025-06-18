@@ -565,9 +565,9 @@ onBeforeUnmount(() => {
 }
 
 /* 卡片固定宽度 */
-.w-[680px] {
+/* .w-[680px] {
   width: 680px;
-}
+} */
 
 /* 优化图表悬停效果 */
 .chart-container:hover {

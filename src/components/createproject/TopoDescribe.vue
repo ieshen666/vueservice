@@ -1,13 +1,12 @@
-<!-- TopoDescribe.vue -->
 <template>
   <div class="bg-white rounded-lg border border-gray-200 p-6">
 
-    <!-- 输入框+按钮区域（去掉边框，字体加大，间距增大） -->
-    <div class="flex justify-center mb-24">
+    <!-- 输入框+按钮区域 -->
+    <div class="flex justify-center mb-10">
       <div class="flex items-center gap-2">
         <input
           type="text"
-          v-model="topologyName"
+          v-model="store.name"
           placeholder="请输入网络拓扑名称"
           class="px-3 py-2 border border-gray-300 rounded-button w-[240px] text-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
@@ -30,7 +29,8 @@
             @click="industryOpen = !industryOpen"
           >
             <span class="truncate">{{ selectedIndustry }}</span>
-            <i class="fas fa-chevron-down text-xs ml-2 flex-shrink-0"></i>
+            <i class="fas fa-chevron-down text-xs ml-2 flex-shrink-0 transition-transform duration-200"
+              :class="{ 'transform rotate-180': industryOpen }"></i>
           </button>
           <div 
             v-if="industryOpen" 
@@ -99,21 +99,41 @@
 
       <!-- 描述文本框 -->
       <textarea
-        v-model="description"
+        v-model="store.description"
         class="w-full h-[200px] px-3 py-2 border border-gray-300 rounded-md"
         placeholder="在此处输入网络拓扑描述..."
       />
     </div>
+
+    <!-- 使用已有模板提示与按钮，左下角 -->
+      <!-- 底部按钮区域（仅保留选择拓扑模板按钮并靠右） -->
+    <div class="flex justify-end mt-8">
+      <button
+        @click="goToTopoPage"
+        class="px-4 py-2 border border-blue-600 text-blue-600 rounded-button text-sm flex items-center gap-2 hover:bg-blue-50 transition-colors"
+      >
+        <i class="fas fa-layer-group"></i>
+        选择拓扑模板
+      </button>
+    </div>
+
   </div>
 </template>
 
 <script setup>
 import { ref } from 'vue'
+import { useRouter } from 'vue-router'
+import { useTemplateStore } from '@/stores/useTemplateStore'
 
-// 输入框绑定值
-const topologyName = ref('某医药厂网络拓扑')
+const store = useTemplateStore()
+const router = useRouter()
 
-// 行业选择逻辑
+// 跳转至模板选择页面
+const goToTopoPage = () => {
+  router.push('/topo')
+}
+
+// 行业选择
 const industryOpen = ref(false)
 const selectedIndustry = ref('行业选择')
 const industries = ['教育行业', '电力行业', '医疗行业']
@@ -122,7 +142,7 @@ const selectIndustry = (item) => {
   industryOpen.value = false
 }
 
-// 靶场多选逻辑
+// 多选靶场
 const targetOpen = ref(false)
 const selectedTargets = ref([])
 const targetOptions = [
@@ -132,11 +152,7 @@ const targetOptions = [
   '分靶场四（H3C）', 
   '分靶场五（OpenStack）'
 ]
-
-const closeDropdown = () => {
-  targetOpen.value = false
-}
-
+const closeDropdown = () => { targetOpen.value = false }
 const handleTargetSelect = (target) => {
   const index = selectedTargets.value.indexOf(target)
   if (index > -1) {
@@ -146,7 +162,7 @@ const handleTargetSelect = (target) => {
   }
 }
 
-// 点击外部关闭功能
+// 自定义指令：点击外部关闭下拉框
 const vClickOutside = {
   mounted(el, binding) {
     el.clickOutsideEvent = function(event) {
@@ -160,9 +176,6 @@ const vClickOutside = {
     document.removeEventListener('click', el.clickOutsideEvent)
   }
 }
-
-// 描述文本
-const description = ref('')
 </script>
 
 <style>
@@ -174,8 +187,6 @@ const description = ref('')
 .fade-leave-to {
   opacity: 0;
 }
-
-/* 自定义滚动条样式 */
 .max-h-60::-webkit-scrollbar {
   width: 6px;
 }

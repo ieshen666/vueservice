@@ -12,7 +12,7 @@
           <TopoDescribe />
         </div>
         <div class="flex-1 bg-white rounded-lg shadow p-6">
-          <h2 class="text-xl font-semibold mb-4 text-gray-700">编辑器</h2>
+          <h2 class="text-xl font-semibold mb-4 text-gray-700">拓扑代码编辑器</h2>
           <Editor />
         </div>
       </section>
