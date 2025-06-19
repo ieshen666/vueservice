@@ -46,9 +46,17 @@
               </p>
             </div>
             <div 
+              v-if="$route.path !== '/profile'"
+              class="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center"
+              @click="$router.push('/profile')"
+             >
+              <i class="fa fa-user mr-2 text-gray-500"></i>
+              <span class="text-gray-700">个人信息</span>
+            </div>
+            <div 
               class="px-4 py-2 hover:bg-gray-50 cursor-pointer flex items-center"
               @click="handleLogout"
-            >
+             >
               <i class="fa fa-sign-out mr-2 text-gray-500"></i>
               <span class="text-gray-700">退出登录</span>
             </div>
