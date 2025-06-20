@@ -10,7 +10,7 @@
           placeholder="请输入网络拓扑名称"
           class="px-3 py-2 border border-gray-300 rounded-button w-[240px] text-lg focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
         />
-        <button class="px-4 py-2 bg-blue-500 text-white rounded-button text-lg flex items-center gap-2">
+        <button @click="deployTopology" class="px-4 py-2 bg-blue-500 text-white rounded-button text-lg flex items-center gap-2">
           <i class="fas fa-play"></i> 部署
         </button>
         <button class="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-button text-lg flex items-center gap-2">
@@ -121,12 +121,58 @@
 </template>
 
 <script setup>
+import { v4 as uuidv4 } from 'uuid'
+import { useUserStore } from '@/stores/user'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTemplateStore } from '@/stores/useTemplateStore'
 
 const store = useTemplateStore()
 const router = useRouter()
+const userStore = useUserStore()
+
+
+
+const deployTopology = async () => {
+  const userId = userStore.userId  // 假设你登录后存了这个字段
+  const pyCode = store.pyCode
+  const topoId = uuidv4()
+
+  if (!userId || !pyCode) {
+    alert('用户未登录或代码为空，无法部署')
+    return
+  }
+
+  try {
+    // 创建 py 文件 Blob
+    const file = new File([pyCode], `${topoId}.py`, { type: 'text/x-python' })
+
+    // 构造 FormData
+    const formData = new FormData()
+    formData.append('topoFile', file)
+
+    // 构造 URL（带参数）
+    const url = `https://ip:12319/outApi/topo/deploy?userId=${userId}&topoId=${topoId}`
+
+    // 发起请求（假设允许跨域）
+    const response = await fetch(url, {
+      method: 'POST',
+      body: formData
+    })
+
+    const result = await response.json()
+
+    if (response.status === 200 && result.code === 1) {
+      alert('部署申请成功！')
+      console.log('返回设备信息:', result.data)
+    } else {
+      alert(`部署失败: ${result.message || '未知错误'}`)
+    }
+  } catch (error) {
+    console.error('部署出错:', error)
+    alert('网络错误或后端服务异常')
+  }
+}
 
 // 跳转至模板选择页面
 const goToTopoPage = () => {

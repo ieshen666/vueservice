@@ -1,12 +1,38 @@
 <template>
   <div class="monaco-editor-container">
     <div class="flex justify-end mb-2">
-      <button
-        @click="toggleConversion"
-        class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-all duration-300"
-      >
-        {{ isPythonMode ? '返回JSON编辑' : '转换为Python' }}
-      </button>
+      <div class="w-48 h-10 flex items-center rounded-full overflow-hidden border border-gray-300 shadow-inner cursor-pointer relative">
+        <!-- 背景层 -->
+        <div class="absolute inset-0 flex">
+          <div 
+            class="flex-1 transition-colors duration-300"
+            :class="isPythonMode ? 'bg-white' : 'bg-blue-500'"
+          ></div>
+          <div 
+            class="flex-1 transition-colors duration-300"
+            :class="isPythonMode ? 'bg-blue-500' : 'bg-white'"
+          ></div>
+        </div>
+        
+        <!-- 文字层 -->
+        <div class="relative z-10 flex w-full">
+          <div
+            class="flex-1 text-center text-sm font-medium py-2"
+            :class="isPythonMode ? 'text-gray-700' : 'text-white'"
+            @click="isPythonMode && toggleConversion()"
+          >
+            JSON
+          </div>
+          <div
+            class="flex-1 text-center text-sm font-medium py-2"
+            :class="isPythonMode ? 'text-white' : 'text-gray-700'"
+            @click="!isPythonMode && toggleConversion()"
+          >
+            Python
+          </div>
+        </div>
+      </div>
+
 
       <button
       @click="loadDemo"
@@ -174,31 +200,32 @@ function generateFirewallConfig(data) {
   const firewalls = data["防火墙"];
   let output = "network = pcl.Network(detail=my_network)\n";
   output += "network_total, subnet_total = network.create()\n\n";
-  
+
   let firewallNum = 1;
   let firewallId = 130;
-  
+
   Object.entries(firewalls).forEach(([firewallName, firewallInfo]) => {
     const instanceSpec = firewallInfo["实例规格"];
     const image = firewallInfo["镜像"];
     const subnets = firewallInfo["子网"];
-    
+
     const userData = `#!/bin/vbash
 source /opt/vyatta/etc/functions/script-template
 configure
 
 commit
 save
-`;
-    
+
+`; // ✅ 结尾保留换行或空行
+
     output += `user_data_${firewallNum} = """\n${userData}"""\n`;
     output += `firewall_${firewallNum} = pcl.firewall("${firewallName}", "${instanceSpec}", "${image}", ${firewallId}, ${JSON.stringify(subnets)}, user_data_${firewallNum})\n`;
     output += `firewall_vm_${firewallNum}, firewall_subnet_${firewallNum} = firewall_${firewallNum}.create()\n\n`;
-    
+
     firewallNum++;
     firewallId++;
   });
-  
+
   return output;
 }
 
@@ -286,6 +313,7 @@ function generateVMConfig(data) {
   Object.entries(instances).forEach(([areaName, areaInstances]) => {
     vm[areaName] = [];
     const areaIdx = divisionIndex[areaName];
+    const subnets = networkDivisions[areaName]["包含网段"];
     
     // 处理每个实例
     areaInstances.forEach(instanceData => {
@@ -303,14 +331,9 @@ function generateVMConfig(data) {
       // 处理接入网段
       const accessNetwork = instanceProps["接入网段"];
       if (accessNetwork !== null) {
-        if (areaName === "运营商") {
-          const subnets = networkDivisions[areaName]["包含网段"];
-          const subnetIndex = subnets.indexOf(accessNetwork);
-          if (subnetIndex !== -1) {
-            entry.push(`subnet_total[${areaIdx}][${subnetIndex}]`);
-          }
-        } else {
-          entry.push(`subnet_total[${areaIdx}][0]`);
+        const subnetIndex = subnets.indexOf(accessNetwork);
+        if (subnetIndex !== -1) {
+          entry.push(`subnet_total[${areaIdx}][${subnetIndex}]`);
         }
       }
       
@@ -336,6 +359,7 @@ function generateVMConfig(data) {
   
   return output;
 }
+
 
 
 
