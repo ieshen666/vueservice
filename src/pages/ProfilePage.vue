@@ -52,7 +52,6 @@
                 readonly
               />
             </div>
-
           </div>
 
           <div>
@@ -74,7 +73,6 @@
       </div>
 
       <!-- 修改密码卡片 -->
-      <!-- 修改密码卡片部分（仅展示修改部分） -->
       <div class="card bg-white rounded-lg shadow-sm p-6">
         <h3 class="text-lg font-medium text-gray-900 mb-4">修改密码</h3>
         <div class="space-y-4">
@@ -110,7 +108,7 @@
           </div>
 
           <div class="flex justify-end">
-            <button @click="openPasswordConfirm" class="btn-primary">
+            <button @click="confirmChangePassword" class="btn-primary">
               <i class="fa fa-key mr-1"></i> 修改密码
             </button>
           </div>
@@ -127,28 +125,22 @@
       <button class="btn-primary" @click="confirmSaveProfile">确认</button>
     </div>
   </dialog>
-
-  <!-- 二级确认对话框：修改密码 -->
-  <dialog ref="passwordDialog" class="dialog-box">
-    <p class="mb-4">确认修改密码？</p>
-    <div class="flex justify-end gap-2">
-      <button @click="closeDialog(passwordDialog)">取消</button>
-      <button class="btn-primary" @click="confirmChangePassword">确认</button>
-    </div>
-  </dialog>
 </template>
 
 <script setup lang="ts">
  
 import { ref } from 'vue'
 import { useUserStore } from '@/stores/user'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import request from '@/utils/request'
+
 
 const authStore = useUserStore()
 
 // 用户数据
 const user = ref({
   avatar: '',
-  username: 'admin',
+  username: authStore.username,
   authority: authStore.role, // 从Pinia获取权限
   email: 'admin@example.com',
   phone: '13800138000'
@@ -184,39 +176,53 @@ const confirmSaveProfile = () => {
 
 // 确认修改密码
 const confirmChangePassword = async () => {
-  if (!password.value.current || !password.value.new || !password.value.confirm) {
-    alert('请完整填写所有密码字段')
-    return
+  const userStore = useUserStore()
+
+  // 1. 表单校验
+  if (!password.value.current || !password.value.new) {
+    return ElMessage.error('请填写所有密码字段')
   }
   if (password.value.new !== password.value.confirm) {
-    alert('两次输入的新密码不一致')
-    return
+    return ElMessage.error('两次密码输入不一致')
   }
 
   try {
-    // 发送后端请求验证当前密码
-    const res = await fetch('/api/verify-password', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        currentPassword: password.value.current,
-        newPassword: password.value.new
-      })
+    // 2. 确认对话框
+    await ElMessageBox.confirm('确定要修改密码吗？', '提示', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning',
     })
 
-    const result = await res.json()
-    if (!res.ok || !result.success) {
-      alert(result.message || '密码验证失败')
-      return
+    // 3. 发起修改密码请求
+    const res = await request.post(`/api/auth/${userStore.userId}/change-password`, {
+      oldPassword: password.value.current,
+      newPassword: password.value.new,
+    })
+
+    // 4. 响应处理
+    if (res.data.status === 200) {
+      if (res.data.status === 200) {
+        ElMessage.success('密码修改成功')
+        userStore.logout()
+        await ElMessageBox.confirm('请重新登录', '操作成功', {
+          confirmButtonText: '去登录',
+          showCancelButton: false
+        })
+        window.location.href = '/login'
+      }
+
+    } else {
+      throw new Error(res.data.message || '修改失败')
     }
 
-    alert('密码修改成功')
-    passwordDialog.value?.close()
-  } catch (err) {
-    alert('请求失败，请稍后再试')
+  } catch (err: any) {
+    if (err !== 'cancel') {
+      console.error('修改失败:', err)
+      ElMessage.error(err.message || '操作失败')
+    }
   }
 }
-
 // 头像上传处理
 const handleAvatarUpload = (e: Event) => {
   const input = e.target as HTMLInputElement

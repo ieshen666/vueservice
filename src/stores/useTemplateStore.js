@@ -39,6 +39,10 @@ export const useTemplateStore = defineStore('template', () => {
   function setJsonCode(code) {
     jsonCode.value = code
   }
+  function appendJsonLine(line) {
+    jsonCode.value += line + '\n'
+  }
+
 
   return {
     isTemplateMode,
@@ -50,6 +54,7 @@ export const useTemplateStore = defineStore('template', () => {
     setTemplate,
     resetTemplate,
     setPyCode,
-    setJsonCode
+    setJsonCode,
+    appendJsonLine
   }
 })

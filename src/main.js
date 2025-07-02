@@ -1,41 +1,42 @@
 import { createApp } from 'vue'
 import App from './App.vue'
 import router from './router'
-import '@fortawesome/fontawesome-free/css/all.min.css'
 import { createPinia } from 'pinia'
 import { useUserStore } from '@/stores/user'
+import '@fortawesome/fontawesome-free/css/all.min.css'
+import ElementPlus from 'element-plus'
+import 'element-plus/dist/index.css'
 
 
 const app = createApp(App)
 const pinia = createPinia()
 
-// 正确的初始化顺序
 app.use(pinia)
-app.use(router)
 
+const userStore = useUserStore()
+
+// ✅ 在挂载 router 之前注册守卫（确保 Pinia 可用）
 router.beforeEach((to, from, next) => {
-  const userStore = useUserStore()
-
-  // 仅第一次初始化时 restore
+  // 恢复登录状态
   if (!userStore.token && localStorage.getItem('token')) {
     userStore.restore()
   }
 
-  if (!userStore.isLoggedIn && !to.meta.allowAnonymous) {
-    // ✅ 避免死循环跳转：当前已经在 /login 就不再跳
-    if (to.path !== '/login') {
-      return next('/login')
-    } else {
-      return next()
-    }
+  const publicPaths = ['/login', '/register']
+  const isPublic = publicPaths.includes(to.path)
+  const isLoggedIn = userStore.isLoggedIn
+
+  if (!isLoggedIn && !isPublic) {
+    return next('/login')
   }
 
-  if (userStore.isLoggedIn && to.path === '/login') {
-    return next('/project')
+  if (isLoggedIn && isPublic) {
+    return next('/project') // 根据权限也可跳转到不同页面
   }
 
   next()
 })
 
-
+app.use(router)
 app.mount('#app')
+app.use(ElementPlus)

@@ -46,7 +46,7 @@
             </button>
           </div>
         </div>
-        <button class="px-4 py-2 bg-blue-500 text-white rounded-button flex items-center gap-2">
+        <button @click="generateJson" class="px-4 py-2 bg-blue-500 text-white rounded-button flex items-center gap-2">
           生成代码 <i class="fas fa-arrow-right"></i>
         </button>
       </div>
@@ -106,14 +106,13 @@
     </div>
 
     <!-- 使用已有模板提示与按钮，左下角 -->
-      <!-- 底部按钮区域（仅保留选择拓扑模板按钮并靠右） -->
     <div class="flex justify-end mt-8">
       <button
-        @click="goToTopoPage"
+        @click="goToProjectPage"
         class="px-4 py-2 border border-blue-600 text-blue-600 rounded-button text-sm flex items-center gap-2 hover:bg-blue-50 transition-colors"
       >
         <i class="fas fa-layer-group"></i>
-        选择拓扑模板
+        选择工程模板
       </button>
     </div>
 
@@ -126,12 +125,113 @@ import { useUserStore } from '@/stores/user'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useTemplateStore } from '@/stores/useTemplateStore'
+import { ElNotification } from 'element-plus'
+import axios from 'axios'
 
 const store = useTemplateStore()
 const router = useRouter()
 const userStore = useUserStore()
 
 
+const generateJson = async () => {
+  if (!store.description.trim()) {
+    ElNotification({
+      title: '提示',
+      message: '请先输入网络拓扑描述',
+      type: 'warning',
+    })
+    return
+  }
+
+  store.setJsonCode('') // 清空旧内容
+  let fullResponse = '' // 用于存储完整的响应
+
+    ElNotification({
+      title: '提示',
+      message: '请求已发送，等待服务器响应...',
+      type: 'warning',
+      duration: 3000, // 3秒后自动关闭
+    })
+
+  try {
+    const response = await fetch('http://localhost:8080/api/generate-json', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ text: store.description })
+    })
+
+    // 检查响应状态码，确保后端已接受请求
+    if (!response.ok || !response.body) {
+      throw new Error('后端返回异常')
+    }
+
+    // 只有到这里才表示连接真正成功
+    ElNotification({
+      title: '成功',
+      message: '连接成功，正在输出代码...',
+      type: 'success',
+      duration: 3000,
+    })
+
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder('utf-8')
+
+    let buffer = ''
+    const processLine = (line) => {
+      if (line.startsWith('data:')) {
+        const clean = line.replace(/^data:\s*/, '')
+        fullResponse += clean
+        store.appendJsonLine(clean)
+      }
+    }
+
+    while (true) {
+      const { value, done } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      let lines = buffer.split('\n')
+      buffer = lines.pop()
+
+      for (const line of lines) {
+        processLine(line.trim())
+      }
+    }
+
+    // 格式化最终结果
+    try {
+      const parsedJson = JSON.parse(fullResponse)
+      const formattedJson = JSON.stringify(parsedJson, null, 2)
+      store.setJsonCode(formattedJson)
+      ElNotification({
+        title: '成功',
+        message: '输出完成，已将JSON格式化',
+        type: 'success',
+        duration: 5000,
+      })
+    } catch (e) {
+      console.error('JSON格式化失败:', e)
+      store.setJsonCode(fullResponse)
+      ElNotification({
+        title: '警告',
+        message: '输出完成，但JSON格式化失败',
+        type: 'warning',
+        duration: 5000,
+      })
+    }
+
+  } catch (error) {
+    console.error('请求失败:', error)
+    ElNotification({
+      title: '错误',
+      message: `生成失败: ${error.message || '请检查网络或后端服务状态'}`,
+      type: 'error',
+      duration: 5000,
+    })
+  }
+}
 
 const deployTopology = async () => {
   const userId = userStore.userId  // 假设你登录后存了这个字段
@@ -175,8 +275,8 @@ const deployTopology = async () => {
 }
 
 // 跳转至模板选择页面
-const goToTopoPage = () => {
-  router.push('/topo')
+const goToProjectPage = () => {
+  router.push('/template')
 }
 
 // 行业选择

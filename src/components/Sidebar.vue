@@ -120,15 +120,15 @@ const userStore = useUserStore()
 // 只有角色为 'admin' 才显示人员管理菜单
 const showUserManagement = computed(() => userStore.role === 'admin')
 
-// 资源子菜单配置
+
 const resourceItems = [
   { path: '/template', label: '工程模板', icon: 'far fa-file' },
   { path: '/image', label: '镜像管理', icon: 'fa-clone' },
-  { path: '/topo', label: '拓扑管理', icon: 'fa-project-diagram' },
+  //{ path: '/topo', label: '拓扑管理', icon: 'fa-project-diagram' },
   { path: '/file', label: '文件管理', icon: 'far fa-file-alt' },
-  { path: '/target', label: '靶标管理', icon: 'fa-crosshairs' }
+  { path: '/networkelement', label: '网元列表', icon: 'fa-network-wired' },
+  //{ path: '/target', label: '靶标管理', icon: 'fa-crosshairs' }
 ];
-
 
 // 检查当前路由是否激活
 const isActive = (path) => {

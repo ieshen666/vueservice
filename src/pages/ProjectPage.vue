@@ -1,294 +1,304 @@
 <template>
-  <div class="card bg-white rounded-lg shadow-sm p-4 mb-4 flex flex-col min-h-[600px]">
-    <!-- 操作栏 -->
-    <div class="flex flex-wrap items-center justify-between mb-4">
-      <div class="flex flex-wrap gap-2 mb-2">
-        <button class="btn-outline border border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500 px-4 py-2 rounded-md transition-all">
-          <i class="fa far fa-trash-alt mr-1"></i> 批量删除
-        </button>
-        <router-link 
-          to="/create-project"
-          class="btn-primary bg-blue-500 text-white hover:bg-blue-600 px-4 py-2 rounded-md transition-all"
-        >
-          <i class="fa fa-plus mr-1"></i> 创建工程
-        </router-link>
+  <div class="card bg-white rounded-lg shadow-sm p-4 mb-4">
+    <!-- 加载状态 -->
+    <div v-if="isLoading" class="flex flex-col items-center justify-center py-8">
+      <div class="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500 mb-3"></div>
+      <p class="text-gray-600">正在加载工程数据...</p>
+    </div>
 
-      </div>
-      
-      <div class="flex flex-wrap items-center gap-2">
-        <select 
-          v-model="selectedStatus"
-          class="input-control border border-gray-300 rounded-md px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
-        >
-          <option value="">全部状态</option>
-          <option value="undeployed">未部署</option>
-          <option value="deployed">部署成功</option>
-          <option value="deploying">部署中</option>
-          <option value="failed">部署失败</option>
-          <option value="deleting">删除中</option>
-        </select>
-        
-        <div class="relative">
-          <input 
-            type="text" 
-            v-model="searchQuery"
-            placeholder="搜索工程名称" 
-            class="input-control border border-gray-300 rounded-md px-3 py-2 pl-9 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+    <!-- 正常内容 -->
+    <template v-else>
+      <!-- 操作栏 -->
+      <div class="flex flex-wrap items-center justify-between mb-4">
+        <div class="flex flex-wrap gap-2 mb-2">
+          <button class="btn-outline border border-gray-300 text-gray-600 hover:border-blue-500 hover:text-blue-500 px-4 py-2 rounded-md transition-all">
+            <i class="fa far fa-trash-alt mr-1"></i> 批量删除
+          </button>
+          <router-link 
+            to="/create-project"
+            class="btn-primary bg-blue-500 text-white hover:bg-blue-600 px-4 py-2 rounded-md transition-all"
           >
+            <i class="fa fa-plus mr-1"></i> 创建工程
+          </router-link>
+        </div>
+
+        <div class="relative">
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="搜索工程名称"
+            class="input-control border border-gray-300 rounded-md px-3 py-2 pl-9 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
+            @input="handleSearchInput"
+          />
           <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
         </div>
       </div>
-    </div>
 
-    <!-- 优化后的表格容器 -->
-    <div class="flex-1 overflow-x-auto relative">
-      <table class="min-w-full">
-        <thead class="bg-gray-50 sticky top-0 z-10">
-          <tr>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">名称</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">部署状态</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">虚拟机数量</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建者</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
-            <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          <!-- 数据行 -->
-          <tr 
-            v-for="project in paginatedProjects" 
-            :key="project.id" 
-            class="hover:bg-gray-50 border-b border-gray-200"
-          >
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ project.name }}</td>
-            <td class="px-4 py-3 whitespace-nowrap">
-              <span :class="statusClass(project.status)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
-                {{ statusText(project.status) }}
-              </span>
-            </td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ project.vmCount }}</td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ project.creator }}</td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ project.createTime }}</td>
-            <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-              <button class="text-blue-500 hover:text-blue-700 mr-3">
-                <i class="fa fa-pencil"></i> 修改
-              </button>
-              <button class="text-red-500 hover:text-red-700">
-                <i class="fa fa-trash"></i> 删除
-              </button>
-            </td>
-          </tr>
-          
-          <!-- 无数据提示 -->
-          <tr v-if="filteredProjects.length === 0">
-            <td colspan="6" class="py-8 text-center">
-              <div class="flex flex-col items-center justify-center">
-                <i class="fa fa-search text-gray-400 text-4xl mb-3"></i>
-                <p class="text-gray-500 font-medium text-lg mb-1">
-                  {{ hasSearchCriteria ? '没有找到匹配的项目' : '暂无项目数据' }}
-                </p>
-                <p class="text-gray-400 text-sm">
-                  {{ hasSearchCriteria ? '请尝试其他搜索条件' : '点击上方按钮创建项目' }}
-                </p>
-                <button 
-                  v-if="hasSearchCriteria"
-                  @click="clearSearch"
-                  class="mt-3 text-blue-500 hover:text-blue-700 text-sm flex items-center"
-                >
-                  <i class="fa fa-times mr-1"></i> 清除搜索条件
-                </button>
-              </div>
-            </td>
-          </tr>
-          
-          <!-- 空白行填充 -->
-          <tr 
-            v-else v-for="i in (pageSize - paginatedProjects.length)" 
-            :key="`empty-${i}`"
-            class="border-b border-gray-200"
-          >
-            <td colspan="6" class="h-10"></td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- 分页组件 -->
-    <div class="mt-auto pt-4 border-t">
-      <div class="flex items-center justify-between px-4 py-3 sm:px-6">
-        <div class="flex-1 flex items-center justify-between">
-          <div>
-            <p class="text-sm text-gray-700">
-              显示第 
-              <span class="font-medium">{{ (currentPage - 1) * pageSize + 1 }}</span> 
-              到 
-              <span class="font-medium">{{ Math.min(currentPage * pageSize, totalItems) }}</span> 
-              项，共 
-              <span class="font-medium">{{ totalItems }}</span> 项
-            </p>
-          </div>
-          <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px">
-            <button 
-              @click="prevPage"
-              :disabled="currentPage === 1"
-              class="px-3 py-2 border border-gray-300 rounded-l-md bg-white text-gray-500 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span class="sr-only">上一页</span>
-              <i class="fa fa-chevron-left"></i>
-            </button>
-            
-            <template v-for="page in displayedPages" :key="page">
-              <button
-                @click="goToPage(page)"
-                :class="{
-                  'bg-blue-500 text-white': page === currentPage,
-                  'bg-white text-gray-500 hover:bg-gray-50': page !== currentPage
-                }"
-                class="px-3 py-2 border border-gray-300 text-sm font-medium"
+      <!-- 表格 -->
+      <div class="overflow-x-auto">
+        <table class="min-w-full divide-y divide-gray-200">
+          <thead class="bg-gray-50">
+            <tr>
+              <th class="w-1/2 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">工程名称</th>
+              <th class="w-1/4 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">描述</th>
+              <th class="w-1/6 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">是否启用</th>
+              <th class="w-1/6 px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">创建时间</th>
+              <th class="w-1/5 px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">操作</th>
+            </tr>
+          </thead>
+          <tbody class="bg-white divide-y divide-gray-200">
+            <tr v-for="project in paginatedProjects" :key="project.id" class="hover:bg-gray-50">
+              <!-- 工程名称列 - 自动换行 + 悬停提示 -->
+              <td 
+                class="px-4 py-3 text-sm text-gray-900 whitespace-normal break-words"
+                :title="project.name.length > 30 ? project.name : ''"
               >
-                {{ page }}
-              </button>
-            </template>
-            
-            <button 
-              @click="nextPage"
-              :disabled="currentPage === totalPages"
-              class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              <span class="sr-only">下一页</span>
-              <i class="fa fa-chevron-right"></i>
-            </button>
-          </nav>
+                <i class="fa fa-folder text-blue-500 mr-2"></i>
+                {{ project.name }}
+              </td>
+              
+              <!-- 描述列 - 自动换行 + 悬停提示 -->
+              <td 
+                class="px-4 py-3 text-sm text-gray-500 whitespace-normal break-words"
+                :title="project.description && project.description.length > 30 ? project.description : ''"
+              >
+                {{ project.description || '—' }}
+              </td>
+              
+              <!-- 是否启用列 -->
+              <td class="px-4 py-3 whitespace-nowrap text-sm">
+                <span
+                  :class="String(project.enabled) === 'true' ? 'text-green-600 font-semibold' : 'text-red-500 font-semibold'"
+                >
+                  {{ project.enabled ? ' 启用' : ' 禁用' }}
+                </span>
+              </td>
+
+              <!-- 创建时间列 -->
+              <td class="px-4 py-3 text-sm text-gray-500 whitespace-nowrap">
+                {{ formatDate(project.createTime) }}
+              </td>
+              
+              <!-- 操作列 -->
+              <td class="px-4 py-3 text-right text-sm font-medium whitespace-nowrap">
+                <button class="text-blue-500 hover:text-blue-700 mr-3">
+                  <i class="fa fa-pencil"></i> 修改
+                </button>
+                <button class="text-red-500 hover:text-red-700">
+                  <i class="fa fa-trash"></i> 删除
+                </button>
+              </td>
+            </tr>
+
+            <tr v-if="filteredProjects.length === 0">
+              <td colspan="6" class="py-8 text-center">
+                <div class="flex flex-col items-center justify-center">
+                  <i class="fa fa-search text-gray-400 text-4xl mb-3"></i>
+                  <p class="text-gray-500 font-medium text-lg mb-1">
+                    {{ searchQuery ? '没有找到匹配的工程' : '暂无工程数据' }}
+                  </p>
+                  <p class="text-gray-400 text-sm">
+                    {{ searchQuery ? '请尝试其他关键词' : '请稍后添加工程' }}
+                  </p>
+                  <button 
+                    v-if="searchQuery"
+                    @click="clearSearch"
+                    class="mt-3 text-blue-500 hover:text-blue-700 text-sm flex items-center"
+                  >
+                    <i class="fa fa-times mr-1"></i> 清除搜索条件
+                  </button>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <!-- 分页组件 -->
+      <div v-if="filteredProjects.length > 0" class="flex items-center justify-between px-4 py-3 mt-4">
+        <p class="text-sm text-gray-600">
+          显示第 {{ startItem + 1 }} - {{ endItem }} 项，共 {{ filteredProjects.length }} 项
+        </p>
+        <div class="inline-flex rounded-md shadow-sm -space-x-px">
+          <button
+            @click="changePage(currentPage - 1)"
+            :disabled="currentPage === 1"
+            class="px-3 py-2 border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <i class="fa fa-chevron-left"></i>
+          </button>
+          <template v-for="page in visiblePages" :key="page">
+            <button
+              v-if="page === '...'" disabled
+              class="px-3 py-2 border border-gray-300 bg-white text-gray-500"
+            >...</button>
+            <button
+              v-else
+              @click="changePage(page)"
+              :class="[
+                'px-3 py-2 border border-gray-300 text-sm font-medium',
+                currentPage === page ? 'bg-blue-500 text-white' : 'bg-white text-gray-500 hover:bg-gray-50'
+              ]"
+            >{{ page }}</button>
+          </template>
+          <button
+            @click="changePage(currentPage + 1)"
+            :disabled="currentPage === totalPages"
+            class="px-3 py-2 border border-gray-300 bg-white text-gray-500 hover:bg-gray-50 disabled:opacity-50"
+          >
+            <i class="fa fa-chevron-right"></i>
+          </button>
         </div>
       </div>
-    </div>
+    </template>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import axios from 'axios'
 
-// 原始项目数据
-const rawProjects = [
-  { id: 1, name: 'Web安全测试平台', status: 'deployed', vmCount: 5, creator: '管理员', createTime: '2023-05-15' },
-  { id: 2, name: '漏洞扫描系统', status: 'undeployed', vmCount: 3, creator: '测试员', createTime: '2023-05-18' },
-  { id: 3, name: '渗透测试环境', status: 'deploying', vmCount: 7, creator: '测试员', createTime: '2023-05-20' },
-  { id: 4, name: '云原生安全靶场', status: 'failed', vmCount: 10, creator: '管理员', createTime: '2023-05-22' },
-  { id: 5, name: '移动应用安全测试', status: 'deleting', vmCount: 4, creator: '测试员', createTime: '2023-05-25' },
-  { id: 6, name: '容器安全检测', status: 'deployed', vmCount: 8, creator: '管理员', createTime: '2023-05-28' },
-  { id: 7, name: 'API安全网关', status: 'deployed', vmCount: 2, creator: '测试员', createTime: '2023-06-01' },
-  { id: 8, name: '数据加密服务', status: 'undeployed', vmCount: 6, creator: '管理员', createTime: '2023-06-05' },
-  { id: 9, name: '防火墙管理系统', status: 'deploying', vmCount: 4, creator: '测试员', createTime: '2023-06-10' },
-  { id: 10, name: '入侵检测系统', status: 'failed', vmCount: 5, creator: '管理员', createTime: '2023-06-15' },
-  { id: 11, name: '日志分析平台', status: 'deployed', vmCount: 3, creator: '测试员', createTime: '2023-06-20' }
-]
-
-// 响应式数据
-const projects = ref([...rawProjects])
-const currentPage = ref(1)
-const pageSize = 7
+const isLoading = ref(true)
+const projects = ref<any[]>([])
 const searchQuery = ref('')
-const selectedStatus = ref('')
+const currentPage = ref(1)
+const pageSize = 10
 
-// 计算是否有搜索条件
-const hasSearchCriteria = computed(() => searchQuery.value || selectedStatus.value)
+const authInfo = {
+  name: 'admin',
+  password: 'Admin@2023',
+  domain: { name: 'default' }
+}
 
-// 过滤后的项目列表
-const filteredProjects = computed(() => {
-  let result = [...projects.value]
-  
-  // 状态过滤
-  if (selectedStatus.value) {
-    result = result.filter(project => project.status === selectedStatus.value)
+async function fetchToken(): Promise<string> {
+  const [res] = await Promise.all([
+    axios.post('/api/v3/auth/tokens', {
+      auth: {
+        identity: {
+          methods: ['password'],
+          password: { user: authInfo }
+        }
+      }
+    }, { validateStatus: () => true }),
+    new Promise(resolve => setTimeout(resolve, 500))
+  ])
+
+  if (res.status === 201) {
+    const token = res.headers['x-subject-token']
+    if (!token) throw new Error('未获取到 Token')
+    return token
   }
-  
-  // 模糊搜索
-  if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(project => 
-      project.name.toLowerCase().includes(query) ||
-      project.creator.toLowerCase().includes(query)
-    )
+  throw new Error(`认证失败: ${res.status}`)
+}
+
+async function fetchProjects() {
+  try {
+    const token = await fetchToken()
+    const response = await axios.get('api/sys/oapi/v1/getProjects', {
+      headers: { 'X-Auth-Token': token }
+    })
+
+    const tree = response.data.res?.[0]?.children || []
+    projects.value = tree.map((node: any) => ({
+      id: node.id,
+      name: node.name,
+      description: node.description,
+      createTime: node.createTime,
+      enabled:node.enabled
+    }))
+  } catch (err) {
+    console.error('加载工程失败:', err)
+  } finally {
+    isLoading.value = false
   }
-  
-  return result
+}
+
+onMounted(() => {
+  setTimeout(() => {
+    fetchProjects()
+  }, 200)
 })
 
-// 分页后的项目列表
+// 工具函数
+function formatDate(val: string): string {
+  return val ? new Date(val).toISOString().split('T')[0] : '—'
+}
+
+// 过滤、分页
+const filteredProjects = computed(() => {
+  const query = searchQuery.value.toLowerCase()
+  return query
+    ? projects.value.filter(p => p.name.toLowerCase().includes(query))
+    : projects.value
+})
+const totalPages = computed(() => Math.ceil(filteredProjects.value.length / pageSize))
 const paginatedProjects = computed(() => {
   const start = (currentPage.value - 1) * pageSize
-  const end = start + pageSize
-  return filteredProjects.value.slice(start, end)
+  return filteredProjects.value.slice(start, start + pageSize)
 })
 
-// 计算总项目数
-const totalItems = computed(() => filteredProjects.value.length)
-const totalPages = computed(() => Math.ceil(totalItems.value / pageSize))
+const startItem = computed(() => (currentPage.value - 1) * pageSize)
+const endItem = computed(() => Math.min(startItem.value + pageSize, filteredProjects.value.length))
 
-// 智能分页显示
-const displayedPages = computed(() => {
-  const maxVisiblePages = 5
-  const pages = []
-  
-  if (totalPages.value <= maxVisiblePages) {
-    for (let i = 1; i <= totalPages.value; i++) {
-      pages.push(i)
-    }
-  } else {
-    const leftBound = Math.max(1, currentPage.value - 2)
-    const rightBound = Math.min(totalPages.value, currentPage.value + 2)
-    
-    if (leftBound > 1) pages.push(1)
-    if (leftBound > 2) pages.push('...')
-    
-    for (let i = leftBound; i <= rightBound; i++) {
-      pages.push(i)
-    }
-    
-    if (rightBound < totalPages.value - 1) pages.push('...')
-    if (rightBound < totalPages.value) pages.push(totalPages.value)
+function clearSearch() {
+  searchQuery.value = ''
+  currentPage.value = 1
+}
+function handleSearchInput() {
+  currentPage.value = 1
+}
+function changePage(page: number) {
+  if (page >= 1 && page <= totalPages.value) {
+    currentPage.value = page
   }
-  
+}
+
+// 分页页码展示
+const visiblePages = computed(() => {
+  const current = currentPage.value, total = totalPages.value
+  const pages = []
+  if (total <= 5) return Array.from({ length: total }, (_, i) => i + 1)
+  pages.push(1)
+  if (current > 3) pages.push('...')
+  for (let i = Math.max(2, current - 1); i <= Math.min(total - 1, current + 1); i++) {
+    pages.push(i)
+  }
+  if (current < total - 2) pages.push('...')
+  if (total > 1) pages.push(total)
   return pages
 })
-
-// 分页方法
-const prevPage = () => currentPage.value > 1 && currentPage.value--
-const nextPage = () => currentPage.value < totalPages.value && currentPage.value++
-const goToPage = (page: number | string) => typeof page === 'number' && (currentPage.value = page)
-
-// 清除搜索条件
-const clearSearch = () => {
-  searchQuery.value = ''
-  selectedStatus.value = ''
-  currentPage.value = 1
-}
-
-// 状态显示方法
-const statusClass = (status: string) => {
-  switch(status) {
-    case 'deployed': return 'bg-green-100 text-green-800'
-    case 'deploying': return 'bg-blue-100 text-blue-800'
-    case 'undeployed': return 'bg-gray-100 text-gray-800'
-    case 'failed': return 'bg-red-100 text-red-800'
-    case 'deleting': return 'bg-yellow-100 text-yellow-800'
-    default: return 'bg-gray-100 text-gray-800'
-  }
-}
-
-const statusText = (status: string) => {
-  switch(status) {
-    case 'deployed': return '部署成功'
-    case 'deploying': return '部署中'
-    case 'undeployed': return '未部署'
-    case 'failed': return '部署失败'
-    case 'deleting': return '删除中'
-    default: return status
-  }
-}
-
-// 监听搜索条件变化
-watch([searchQuery, selectedStatus], () => {
-  currentPage.value = 1
-})
 </script>
+
+<style scoped>
+
+table {
+  table-layout: fixed;
+  width: 100%;
+}
+
+th:last-child, 
+td:last-child {
+  min-width: 120px;
+}
+
+/* 确保空状态行正确显示 */
+tr[colspan] td {
+  display: table-cell;
+  width: 100%;
+}
+.animate-spin {
+  animation: spin 1s linear infinite;
+}
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+
+
+/* 为表格单元格添加最小高度，保持行高一致 */
+td {
+  min-height: 3rem;
+  vertical-align: top;
+}
+</style>

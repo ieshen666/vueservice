@@ -25,7 +25,7 @@
           <input 
             type="text" 
             v-model="searchQuery"
-            placeholder="搜索用户名或昵称" 
+            placeholder="搜索用户名" 
             class="input-control border border-gray-300 rounded-md px-3 py-2 pl-9 focus:outline-none focus:ring-2 focus:ring-blue-200 focus:border-blue-500"
           >
           <i class="fa fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
@@ -39,7 +39,6 @@
         <thead class="bg-gray-50 sticky top-0 z-10">
           <tr>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户名</th>
-            <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">昵称</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">用户类型</th>
             <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">创建时间</th>
             <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">操作</th>
@@ -52,7 +51,6 @@
             class="hover:bg-gray-50"
           >
             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-900">{{ user.username }}</td>
-            <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ user.nickname }}</td>
             <td class="px-4 py-3 whitespace-nowrap">
               <span :class="userTypeClass(user.type)" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
                 {{ userTypeText(user.type) }}
@@ -60,21 +58,25 @@
             </td>
             <td class="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{{ user.createTime }}</td>
             <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-              <button class="text-blue-500 hover:text-blue-700 mr-3">
-                <i class="fa fa-key"></i> 修改密码
-              </button>
-              <button class="text-yellow-500 hover:text-yellow-700 mr-3">
+              <button 
+                class="text-yellow-500 hover:text-yellow-700 mr-3"
+                @click="resetPassword(user.id)"
+              >
                 <i class="fa fa-refresh"></i> 重置密码
               </button>
-              <button class="text-red-500 hover:text-red-700">
+              <button 
+                class="text-red-500 hover:text-red-700"
+                @click="deleteUser(user.id)"
+              >
                 <i class="fa fa-trash"></i> 删除
               </button>
             </td>
+
           </tr>
           
           <!-- 无数据提示 -->
           <tr v-if="filteredUsers.length === 0">
-            <td colspan="5" class="py-8 text-center">
+            <td colspan="4" class="py-8 text-center">
               <div class="flex flex-col items-center justify-center">
                 <i class="fa fa-search text-gray-400 text-4xl mb-3"></i>
                 <p class="text-gray-500 font-medium text-lg mb-1">
@@ -100,7 +102,7 @@
             :key="`empty-${i}`"
             class="border-b border-gray-200"
           >
-            <td colspan="5" class="h-10"></td>
+            <td colspan="4" class="h-10"></td>
           </tr>
         </tbody>
       </table>
@@ -159,119 +161,165 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
+import request from '@/utils/request'
+import { ElMessageBox, ElMessage } from 'element-plus'
 
-// 原始用户数据
-const rawUsers = [
-  { id: 1, username: 'admin', nickname: '系统管理员', type: 'admin', createTime: '2023-01-15' },
-  { id: 2, username: 'user1', nickname: '测试用户1', type: 'user', createTime: '2023-02-20' },
-  { id: 3, username: 'user2', nickname: '测试用户2', type: 'user', createTime: '2023-03-05' },
-  { id: 4, username: 'user3', nickname: '测试用户3', type: 'user', createTime: '2023-03-18' },
-  { id: 5, username: 'user4', nickname: '测试用户4', type: 'user', createTime: '2023-04-02' },
-  { id: 6, username: 'user5', nickname: '测试用户5', type: 'user', createTime: '2023-04-15' },
-  { id: 7, username: 'user6', nickname: '测试用户6', type: 'user', createTime: '2023-05-01' },
-  { id: 8, username: 'user7', nickname: '测试用户7', type: 'user', createTime: '2023-05-12' },
-  { id: 9, username: 'user8', nickname: '测试用户8', type: 'user', createTime: '2023-05-25' },
-  { id: 10, username: 'user9', nickname: '测试用户9', type: 'user', createTime: '2023-06-05' },
-  { id: 11, username: 'user10', nickname: '测试用户10', type: 'user', createTime: '2023-06-18' },
-  { id: 12, username: 'user11', nickname: '测试用户11', type: 'user', createTime: '2023-07-02' },
-  { id: 13, username: 'user12', nickname: '测试用户12', type: 'user', createTime: '2023-07-15' }
-]
+// 定义用户类型
+interface User {
+  id: number
+  username: string
+  type: string
+  createTime: string
+}
 
 // 响应式数据
-const users = ref([...rawUsers])
+const users = ref<User[]>([])
+
 const currentPage = ref(1)
 const pageSize = 7
 const searchQuery = ref('')
 const selectedType = ref('')
 
-// 计算是否有搜索条件
+// 是否有搜索条件
 const hasSearchCriteria = computed(() => searchQuery.value || selectedType.value)
 
-// 过滤后的用户列表
+// 过滤用户
 const filteredUsers = computed(() => {
   let result = [...users.value]
-  
-  // 用户类型过滤
+
+  // 类型筛选
   if (selectedType.value) {
     result = result.filter(user => user.type === selectedType.value)
   }
-  
-  // 模糊搜索
+
+  // 搜索用户名模糊匹配
   if (searchQuery.value) {
-    const query = searchQuery.value.toLowerCase()
-    result = result.filter(user => 
-      user.username.toLowerCase().includes(query) ||
-      user.nickname.toLowerCase().includes(query)
-    )
+    const q = searchQuery.value.toLowerCase()
+    result = result.filter(user => user.username.toLowerCase().includes(q))
   }
-  
+
   return result
 })
 
-// 分页后的用户列表
+// 分页
 const paginatedUsers = computed(() => {
   const start = (currentPage.value - 1) * pageSize
   const end = start + pageSize
   return filteredUsers.value.slice(start, end)
 })
 
-// 计算总用户数
+// 总数和总页数
 const totalItems = computed(() => filteredUsers.value.length)
 const totalPages = computed(() => Math.ceil(totalItems.value / pageSize))
 
-// 智能分页显示
+// 智能分页
 const displayedPages = computed(() => {
-  const maxVisiblePages = 5
-  const pages = []
-  
-  if (totalPages.value <= maxVisiblePages) {
-    for (let i = 1; i <= totalPages.value; i++) {
-      pages.push(i)
-    }
+  const maxPages = 5
+  const pages: Array<number | string> = []
+
+  if (totalPages.value <= maxPages) {
+    for (let i = 1; i <= totalPages.value; i++) pages.push(i)
   } else {
-    const leftBound = Math.max(1, currentPage.value - 2)
-    const rightBound = Math.min(totalPages.value, currentPage.value + 2)
-    
-    if (leftBound > 1) pages.push(1)
-    if (leftBound > 2) pages.push('...')
-    
-    for (let i = leftBound; i <= rightBound; i++) {
-      pages.push(i)
-    }
-    
-    if (rightBound < totalPages.value - 1) pages.push('...')
-    if (rightBound < totalPages.value) pages.push(totalPages.value)
+    const left = Math.max(1, currentPage.value - 2)
+    const right = Math.min(totalPages.value, currentPage.value + 2)
+
+    if (left > 1) pages.push(1)
+    if (left > 2) pages.push('...')
+
+    for (let i = left; i <= right; i++) pages.push(i)
+
+    if (right < totalPages.value - 1) pages.push('...')
+    if (right < totalPages.value) pages.push(totalPages.value)
   }
-  
+
   return pages
 })
 
-// 分页方法
-const prevPage = () => currentPage.value > 1 && currentPage.value--
-const nextPage = () => currentPage.value < totalPages.value && currentPage.value++
-const goToPage = (page: number | string) => typeof page === 'number' && (currentPage.value = page)
+// 翻页函数
+const prevPage = () => {
+  if (currentPage.value > 1) currentPage.value--
+}
+const nextPage = () => {
+  if (currentPage.value < totalPages.value) currentPage.value++
+}
+const goToPage = (page: number | string) => {
+  if (typeof page === 'number') currentPage.value = page
+}
 
-// 清除搜索条件
+// 清除搜索
 const clearSearch = () => {
   searchQuery.value = ''
   selectedType.value = ''
   currentPage.value = 1
 }
 
-// 用户类型显示方法
+// 用户类型样式
 const userTypeClass = (type: string) => {
-  return type === 'admin' 
-    ? 'bg-purple-100 text-purple-800' 
-    : 'bg-gray-100 text-gray-800'
+  return type === 'admin' ? 'bg-purple-100 text-purple-800' : 'bg-gray-100 text-gray-800'
 }
-
 const userTypeText = (type: string) => {
   return type === 'admin' ? '系统管理员' : '普通用户'
 }
 
-// 监听搜索条件变化
+// 格式化日期
+const formatDate = (dateString: string) => {
+  const date = new Date(dateString)
+  return date.toLocaleString() // 或者使用更具体的格式化方式
+}
+
+// 监听搜索筛选条件重置页码
 watch([searchQuery, selectedType], () => {
   currentPage.value = 1
 })
+
+// 页面加载时请求后端用户数据
+onMounted(async () => {
+  try {
+    const res = await request.get('/api/auth')
+    users.value = res.data.data || []
+  } catch (error) {
+    console.error('获取用户列表失败', error)
+    users.value = []
+  }
+})
+
+// 重置密码
+const resetPassword = async (id: number) => {
+  try {
+    await ElMessageBox.confirm(
+      '确定要重置该用户的密码吗？',
+      '确认操作',
+      { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    await request.put(`/api/auth/${id}/reset-password`)
+    ElMessage.success('密码已重置为默认值')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('重置密码失败', error)
+      ElMessage.error('重置密码失败')
+    }
+  }
+}
+
+// 删除用户
+const deleteUser = async (id: number) => {
+  try {
+    await ElMessageBox.confirm(
+      '删除操作不可恢复，是否确认删除该用户？',
+      '危险操作',
+      { confirmButtonText: '删除', cancelButtonText: '取消', type: 'warning' }
+    )
+    await request.delete(`/api/auth/${id}`)
+    // 前端同步移除用户
+    users.value = users.value.filter(user => user.id !== id)
+    ElMessage.success('用户删除成功')
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('删除失败', error)
+      ElMessage.error('删除用户失败')
+    }
+  }
+}
+
 </script>

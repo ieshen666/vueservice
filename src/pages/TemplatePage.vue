@@ -82,9 +82,13 @@
               {{ template.createTime }}
             </td>
             <td class="px-4 py-3 whitespace-nowrap text-right text-sm font-medium">
-              <button class="text-blue-500 hover:text-blue-700 mr-3">
+              <button
+                class="text-blue-500 hover:text-blue-700 mr-3"
+                @click="createProjectFromTemplate(template)"
+              >
                 <i class="fa fa-plus mr-1"></i> 创建工程
               </button>
+
               <button class="text-blue-500 hover:text-blue-700 mr-3">
                 <i class="fa fa-pencil"></i> 修改
               </button>
@@ -170,6 +174,8 @@
 
 <script setup lang="ts">
 import { ref, computed, watch } from 'vue'
+import { useTemplateStore } from '@/stores/useTemplateStore'
+import { useRouter } from 'vue-router'
 
 // 原始模板数据
 const templates = ref([
@@ -209,7 +215,8 @@ const templates = ref([
     createTime: '2023-05-20',
   },
 ])
-
+const templateStore = useTemplateStore()
+const router = useRouter()
 const selectedRange = ref('')
 const searchText = ref('')
 const currentPage = ref(1)
@@ -283,7 +290,14 @@ function changePage(page: number) {
 function resetPage() {
   currentPage.value = 1
 }
-
+function createProjectFromTemplate(template: any) {
+  templateStore.setTemplate({
+    name: template.name,
+    description: '从已有模板导入',
+    yaml: `# ${template.name} 示例拓扑\nversion: 1\nnodes:\n  - name: node1\n    type: router`
+  })
+  router.push('/create-project')
+}
 function clearSearch() {
   searchText.value = ''
   selectedRange.value = ''

@@ -2,7 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useUserStore } from '@/stores/user'
-
+import request from '@/utils/request'
 const router = useRouter()
 const userStore = useUserStore()
 
@@ -13,26 +13,34 @@ const form = ref({
 
 const errorMsg = ref('')
 
-const mockUsers = [
-  { username: 'admin', password: '123456', role: 'admin' },
-  { username: 'user', password: '123456', role: 'user' }
-]
+// 登录函数，调用后端接口
+const handleLogin = async () => {
+  errorMsg.value = ''
 
-const handleLogin = () => {
-  const { username, password } = form.value
-  const matchedUser = mockUsers.find(user => user.username === username && user.password === password)
+  try {
+    const response = await request.post('/api/auth/login', form.value)
 
-  if (!matchedUser) {
-    errorMsg.value = '用户名或密码错误'
-    return
+    if (response.data.status === 200) {
+      const userData = response.data.data
+      userStore.login({
+        token: userData.token,
+        userId: userData.userId,
+        username: userData.username,
+        role: userData.role,
+      })
+      router.push('/project')
+    } else {
+      errorMsg.value = response.data.message || '登录失败'
+    }
+  } catch (err) {
+    if (err.response && err.response.data && err.response.data.message) {
+      errorMsg.value = err.response.data.message
+    } else {
+      errorMsg.value = '无法连接服务器'
+    }
   }
-
-  userStore.login(matchedUser)
-
-  router.push('/project') // 统一跳转主页
 }
 </script>
-
 
 <template>
   <div class="w-[480px] p-10 rounded-2xl shadow-2xl bg-white">
@@ -77,6 +85,7 @@ const handleLogin = () => {
 
       <!-- 注册按钮 -->
       <button
+        @click="router.push('/register')"
         class="w-full py-3 border border-blue-500 text-blue-500 font-semibold rounded-lg hover:bg-blue-50"
       >
         注册

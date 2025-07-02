@@ -11,7 +11,7 @@ export const useUserStore = defineStore('user', {
   actions: {
     login(user) {
       this.isLoggedIn = true
-      this.token = 'mock-token' // 可替换为实际 token
+      this.token = user.token
       this.userId = user.userId || ''   // 新增：从登录参数中获取userId
       this.username = user.username
       this.role = user.role || ''
@@ -27,7 +27,7 @@ export const useUserStore = defineStore('user', {
       this.userId = ''
       this.username = ''
       this.role = ''
-
+      localStorage.clear()
       localStorage.removeItem('token')
       localStorage.removeItem('userId')   // 新增删除userId
       localStorage.removeItem('username')
