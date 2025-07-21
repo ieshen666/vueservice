@@ -20,7 +20,7 @@ const handleRegister = async () => {
   isSubmitting.value = true
 
   try {
-    const response = await axios.post('http://localhost:8080/api/auth/register', form.value)
+    const response = await axios.post('http://10.10.5.8:8080/api/auth/register', form.value)
 
     const res = response.data
     if (res.status === 200) {

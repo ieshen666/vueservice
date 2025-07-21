@@ -126,7 +126,7 @@ const resourceItems = [
   { path: '/image', label: '镜像管理', icon: 'fa-clone' },
   //{ path: '/topo', label: '拓扑管理', icon: 'fa-project-diagram' },
   { path: '/file', label: '文件管理', icon: 'far fa-file-alt' },
-  { path: '/networkelement', label: '网元列表', icon: 'fa-network-wired' },
+  { path: '/networkelement', label: '靶场资源', icon: 'fa-network-wired' },
   //{ path: '/target', label: '靶标管理', icon: 'fa-crosshairs' }
 ];
 

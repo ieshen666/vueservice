@@ -52,8 +52,11 @@ import { useTemplateStore } from '@/stores/useTemplateStore'
 import loader from '@monaco-editor/loader'
 
 const store = useTemplateStore()
+const { shouldMoveCursorToEnd, setShouldMoveCursorToEnd } = store
 const editorContainer = ref(null)
 const isPythonMode = ref(false) // 新增状态控制
+const { registerAppendLineHandler } = store
+
 let editor = null
 
 function loadDemo() {
@@ -284,6 +287,23 @@ function generateRouterConfig(data) {
   return output;
 }
 
+function appendEditorLine(line) {
+  if (!editor) return
+
+  const model = editor.getModel()
+  const oldValue = model.getValue()
+  const newValue = oldValue + (oldValue.endsWith('\n') ? '' : '\n') + line
+
+  model.setValue(newValue)
+
+  const lastLine = model.getLineCount()
+  const lastColumn = model.getLineMaxColumn(lastLine)
+
+  editor.setPosition({ lineNumber: lastLine, column: lastColumn })
+  editor.revealLineInCenter(lastLine)
+}
+
+
 // 生成虚拟机配置
 function generateVMConfig(data) {
   const networkDivisions = data["网络划分"];
@@ -432,6 +452,11 @@ const handleResize = () => {
 onMounted(async () => {
   await nextTick()
   await initEditor()
+  registerAppendLineHandler((line) => {
+    if (!isPythonMode.value) {
+      appendEditorLine(line)
+    }
+  })
 })
 
 onUnmounted(() => {
@@ -447,9 +472,21 @@ watch(
   (newVal) => {
     if (editor && !isPythonMode.value && newVal !== editor.getValue()) {
       editor.setValue(newVal)
+
+      // 👇 判断是否需要跳转光标
+      if (shouldMoveCursorToEnd) {
+        const model = editor.getModel()
+        const lastLine = model.getLineCount()
+        const lastColumn = model.getLineMaxColumn(lastLine)
+        editor.setPosition({ lineNumber: lastLine, column: lastColumn })
+        editor.revealLineInCenter(lastLine)
+
+        setShouldMoveCursorToEnd(false) // ✅ 重置状态
+      }
     }
   }
 )
+
 </script>
 
 <style scoped>

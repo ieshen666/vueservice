@@ -6,6 +6,10 @@ export const useTemplateStore = defineStore('template', () => {
   const selectedTemplateId = ref(null)
   const name = ref('')
   const description = ref('')
+  const industry = ref('') // ✅ 所属行业字段
+  const shouldMoveCursorToEnd = ref(false)
+  let onAppendLineCallback = null
+
 
   // ✅ 新增：Python 与 JSON 代码内容
   const pyCode = ref('')
@@ -16,6 +20,7 @@ export const useTemplateStore = defineStore('template', () => {
     selectedTemplateId.value = template.id
     name.value = template.name
     description.value = template.description
+    industry.value = template.industry || '' // ✅ 新增
 
     // ✅ 初始化代码内容（如模板包含 py/json 字段）
     pyCode.value = template.pyCode || ''
@@ -27,6 +32,7 @@ export const useTemplateStore = defineStore('template', () => {
     selectedTemplateId.value = null
     name.value = ''
     description.value = ''
+    industry.value = '' // ✅ 新增
     pyCode.value = ''
     jsonCode.value = ''
   }
@@ -41,7 +47,17 @@ export const useTemplateStore = defineStore('template', () => {
   }
   function appendJsonLine(line) {
     jsonCode.value += line + '\n'
+      if (onAppendLineCallback) {
+        onAppendLineCallback(line)
+      }
   }
+  function setShouldMoveCursorToEnd(flag) {
+    shouldMoveCursorToEnd.value = flag
+  }
+  function registerAppendLineHandler(handler) {
+    onAppendLineCallback = handler
+  }
+
 
 
   return {
@@ -49,12 +65,17 @@ export const useTemplateStore = defineStore('template', () => {
     selectedTemplateId,
     name,
     description,
+    industry,
     pyCode,
     jsonCode,
     setTemplate,
     resetTemplate,
     setPyCode,
     setJsonCode,
-    appendJsonLine
+    appendJsonLine,
+    shouldMoveCursorToEnd,
+    setShouldMoveCursorToEnd,
+    appendJsonLine,
+    registerAppendLineHandler
   }
 })

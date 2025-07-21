@@ -4,7 +4,7 @@ import { ElMessage } from 'element-plus'
 import { useUserStore } from '@/stores/user' // ✅ 注意路径需匹配你的项目结构
 
 const request = axios.create({
-  baseURL: 'http://localhost:8080',
+  baseURL: 'http://10.10.5.8:8080',
   timeout: 5000,
 })
 

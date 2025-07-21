@@ -17,6 +17,9 @@ import NewImagePage from '@/newpages/NewImagePage.vue'
 import NewTargetPage from '@/newpages/NewTargetPage.vue'
 import NetworkElement from '@/pages/NetworkElementListPage.vue'
 import Register from '@/views/Register.vue'
+import ComputeDetail from '@/resourcedetail/ComputeDetail.vue'
+import StorageServerDetail from '@/resourcedetail/StorageServerDetail.vue'
+import SimulationResourceDetail from '@/resourcedetail/SimulationResourceDetail.vue'
 
 
 const routes = [
@@ -37,7 +40,11 @@ const routes = [
   { path: '/target', component: TargetPage ,meta: { fullscreen: false }},
   { path: '/profile', component: ProfilePage ,meta: { fullscreen: false }},
   { path: '/create-project', name: 'CreateProject',component: CreateProject,meta: { fullscreen: true }},
+  { path: '/element/compute/:id', name: 'ComputeDetail',component: ComputeDetail,meta: { fullscreen: true }},
+  { path: '/element/storage/:id', name: 'StorageServerDetail',component: StorageServerDetail,meta: { fullscreen: true }},
+    { path: '/element/simulation/:id', name: 'SimulationResourceDetail',component: SimulationResourceDetail,meta: { fullscreen: true }},
   { path: '/login', name: 'Login',component: Login,meta: { fullscreen: true },
+  
   
 }
 
